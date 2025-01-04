@@ -18,14 +18,21 @@ def set_motor_speed(speed: int):
     duty = int(speed * 1023 / 100)  # Wandelt 0-100% in 0-1023 um
     pwm.duty(duty)
 
-cycle_time = 0.05
+cycle_time = 0.025
+start_speed = 50
+end_speed = 100
 while True:
-    for speed in range(50, 100):
+    for speed in range(start_speed, end_speed):
         sleep(cycle_time)
         print(f"Speed: {speed}")
         set_motor_speed(speed)
-    for speed in range(100, 49, -1):
-        if speed == 100:
+        if speed == start_speed:
+            for it in range(10):
+                sleep(cycle_time)
+                print(f"Speed: {speed}")
+                set_motor_speed(speed)
+    for speed in range(end_speed, start_speed-1, -1):
+        if speed == end_speed:
             for it in range(10):
                 sleep(cycle_time)
                 print(f"Speed: {speed}")
@@ -34,3 +41,4 @@ while True:
             sleep(cycle_time)
             print(f"Speed: {speed}")
             set_motor_speed(speed)
+
