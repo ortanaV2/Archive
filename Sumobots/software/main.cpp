@@ -1,47 +1,101 @@
+// Motor-Pins
+const int MOTOR_LEFT_FORWARD = 2;
+const int MOTOR_LEFT_BACKWARD = 0;
+const int MOTOR_RIGHT_FORWARD = 4;
+const int MOTOR_RIGHT_BACKWARD = 5;
+
+// Sensors
+const int SENSOR_RIGHT = 12;
+const int SENSOR_LEFT = 14;
+
+int right_line;
+int left_line;
+
 void setup() {
-  pinMode(0, OUTPUT);
-  pinMode(2, OUTPUT);
-  pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT);
+  // Sensor setup
+  pinMode(SENSOR_RIGHT, INPUT_PULLUP);
+  pinMode(SENSOR_LEFT, INPUT_PULLUP);
+
+  // Motor setup
+  pinMode(MOTOR_LEFT_FORWARD, OUTPUT);
+  pinMode(MOTOR_LEFT_BACKWARD, OUTPUT);
+  pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
+  pinMode(MOTOR_RIGHT_BACKWARD, OUTPUT);
+
+  Serial.begin(9600);
+  freeze_all();
 }
 
+// Alle Motoren stoppen
 void freeze_all() {
-  digitalWrite(0, LOW);
-  digitalWrite(2, LOW);
-  digitalWrite(4, LOW);
-  digitalWrite(5, LOW);
+  digitalWrite(MOTOR_LEFT_FORWARD, LOW);
+  digitalWrite(MOTOR_LEFT_BACKWARD, LOW);
+  digitalWrite(MOTOR_RIGHT_FORWARD, LOW);
+  digitalWrite(MOTOR_RIGHT_BACKWARD, LOW);
 }
 
-void forward(int time) {
-  digitalWrite(2, HIGH);
-  digitalWrite(4, HIGH);
+// Sichere Einzelsteuerung für linken Motor
+void setLeftMotor(bool forward, bool enable) {
+  digitalWrite(MOTOR_LEFT_FORWARD, (forward && enable) ? HIGH : LOW);
+  digitalWrite(MOTOR_LEFT_BACKWARD, (!forward && enable) ? HIGH : LOW);
+}
+
+// Sichere Einzelsteuerung für rechten Motor
+void setRightMotor(bool forward, bool enable) {
+  digitalWrite(MOTOR_RIGHT_FORWARD, (forward && enable) ? HIGH : LOW);
+  digitalWrite(MOTOR_RIGHT_BACKWARD, (!forward && enable) ? HIGH : LOW);
+}
+
+// Kombinationen
+void driveForward(int time) {
+  setLeftMotor(true, true);
+  setRightMotor(true, true);
   delay(time);
   freeze_all();
 }
 
-void backward(int time) {
-  digitalWrite(0, HIGH);
-  digitalWrite(5, HIGH);
+void driveBackward(int time) {
+  setLeftMotor(false, true);
+  setRightMotor(false, true);
   delay(time);
   freeze_all();
 }
 
-void rotate(int time) {
-  digitalWrite(2, HIGH);
-  digitalWrite(5, HIGH);
+void rotateLeft(int time) {
+  setLeftMotor(false, true);
+  setRightMotor(true, true);
   delay(time);
   freeze_all();
 }
 
-void forward_pwm(int time, int pwm) {
-  analogWrite(2, pwm);
-  analogWrite(4, pwm);
+void rotateRight(int time) {
+  setLeftMotor(true, true);
+  setRightMotor(false, true);
   delay(time);
   freeze_all();
 }
 
 void loop() {
-  forward_pwm(1000, 225);
-  freeze_all();
-  delay(2000);
+  right_line = digitalRead(SENSOR_RIGHT);
+  left_line = digitalRead(SENSOR_LEFT);
+
+  if (left_line == HIGH && right_line == LOW) {
+    rotateRight(250);
+    delay(10);
+  }
+
+  else if (right_line == HIGH && left_line == LOW) {
+    rotateLeft(250);
+    delay(10);
+  }
+
+  else if (right_line == HIGH && left_line == HIGH) {
+    rotateRight(500);
+    delay(10);
+  }
+
+  else {
+    driveForward(50);
+    delay(10);
+  }
 }
