@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 const int MOTOR_LEFT_FORWARD = 13;
 const int MOTOR_LEFT_BACKWARD = 12;
 const int MOTOR_RIGHT_FORWARD = 27;
@@ -6,13 +8,17 @@ const int MOTOR_RIGHT_BACKWARD = 14;
 const int SENSOR_RIGHT = 26;
 const int SENSOR_LEFT = 15;
 
-int MOTOR_SPEED = 220;
+int MOTOR_SPEED = 230;
 const float LEFT_MOTOR_CALIB = 0;
 const float RIGHT_MOTOR_CALIB = 4;
 
 int RIGHT_LINE;
 int LEFT_LINE;
 bool IS_MOVING_FORWARD = false;
+
+unsigned long lastDetectionTime = 0;
+unsigned long currentDetectionTime = 0;
+int detectionCounter = 0;
 
 void setup() {
   pinMode(SENSOR_RIGHT, INPUT_PULLUP);
@@ -22,6 +28,7 @@ void setup() {
   pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
   pinMode(MOTOR_RIGHT_BACKWARD, OUTPUT);
   Serial.begin(9600);
+  randomSeed(analogRead(0)); // Seed für Zufall
   freeze_all();
   delay(3000); // Starting Sequence
 }
@@ -108,6 +115,31 @@ void rotateUntilNoLine(bool leftDir) {
   freeze_all();
 }
 
+void checkLoopBreaker(bool lineDetected) {
+  if (lineDetected) {
+    currentDetectionTime = millis();
+    unsigned long delta = currentDetectionTime - lastDetectionTime;
+
+    if (delta <= 1000) {
+      detectionCounter++;
+    } else {
+      detectionCounter = 1;
+    }
+
+    lastDetectionTime = currentDetectionTime;
+
+    if (detectionCounter >= 4) {
+      bool turnLeft = random(0, 2); // 0 oder 1
+      if (turnLeft) rotateLeft();
+      else rotateRight();
+      delay(500);
+      freeze_all();
+      delay(100);
+      detectionCounter = 0;
+    }
+  }
+}
+
 void loop() {
   RIGHT_LINE = digitalRead(SENSOR_RIGHT);
   LEFT_LINE = digitalRead(SENSOR_LEFT);
@@ -129,5 +161,8 @@ void loop() {
   } else {
     driveForward();
   }
+
+  checkLoopBreaker(LEFT_LINE == HIGH || RIGHT_LINE == HIGH);
+
   delay(5);
 }
