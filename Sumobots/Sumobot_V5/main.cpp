@@ -16,22 +16,12 @@ int RIGHT_LINE;
 int LEFT_LINE;
 bool IS_MOVING_FORWARD = false;
 
+int lastLineStatus = -1;
+unsigned long lastLineChangeTime = 0;
+
 unsigned long lastDetectionTime = 0;
 unsigned long currentDetectionTime = 0;
 int detectionCounter = 0;
-
-void setup() {
-  pinMode(SENSOR_RIGHT, INPUT_PULLUP);
-  pinMode(SENSOR_LEFT, INPUT_PULLUP);
-  pinMode(MOTOR_LEFT_FORWARD, OUTPUT);
-  pinMode(MOTOR_LEFT_BACKWARD, OUTPUT);
-  pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
-  pinMode(MOTOR_RIGHT_BACKWARD, OUTPUT);
-  Serial.begin(9600);
-  randomSeed(analogRead(0)); // Seed für Zufall
-  freeze_all();
-  delay(3000); // Starting Sequence
-}
 
 void freeze_all() {
   analogWrite(MOTOR_LEFT_FORWARD, 0);
@@ -102,6 +92,33 @@ void rotateRight() {
   IS_MOVING_FORWARD = false;
 }
 
+int getLineStatusFromValues(int left, int right) {
+  bool l = left == HIGH;
+  bool r = right == HIGH;
+  return (l << 1) | r;
+}
+
+void checkUnchangedLineStatus(int currentStatus) {
+  unsigned long now = millis();
+  if (currentStatus != lastLineStatus) {
+    lastLineStatus = currentStatus;
+    lastLineChangeTime = now;
+  } else {
+    if (now - lastLineChangeTime >= 4000) {
+      driveBackward(255);
+      delay(300);
+      if (random(0, 2)) {
+        rotateLeft();
+      } else {
+        rotateRight();
+      }
+      delay(500);
+      freeze_all();
+      lastLineChangeTime = millis();
+    }
+  }
+}
+
 void rotateUntilNoLine(bool leftDir) {
   if (leftDir) {
     rotateLeft();
@@ -119,25 +136,37 @@ void checkLoopBreaker(bool lineDetected) {
   if (lineDetected) {
     currentDetectionTime = millis();
     unsigned long delta = currentDetectionTime - lastDetectionTime;
-
     if (delta <= 1000) {
       detectionCounter++;
     } else {
       detectionCounter = 1;
     }
-
     lastDetectionTime = currentDetectionTime;
-
     if (detectionCounter >= 4) {
-      bool turnLeft = random(0, 2); // 0 oder 1
-      if (turnLeft) rotateLeft();
-      else rotateRight();
+      if (random(0, 2)) {
+        rotateLeft();
+      } else {
+        rotateRight();
+      }
       delay(500);
       freeze_all();
       delay(100);
       detectionCounter = 0;
     }
   }
+}
+
+void setup() {
+  pinMode(SENSOR_RIGHT, INPUT_PULLUP);
+  pinMode(SENSOR_LEFT, INPUT_PULLUP);
+  pinMode(MOTOR_LEFT_FORWARD, OUTPUT);
+  pinMode(MOTOR_LEFT_BACKWARD, OUTPUT);
+  pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
+  pinMode(MOTOR_RIGHT_BACKWARD, OUTPUT);
+  Serial.begin(9600);
+  randomSeed(analogRead(0));
+  freeze_all();
+  delay(3000);
 }
 
 void loop() {
@@ -163,6 +192,7 @@ void loop() {
   }
 
   checkLoopBreaker(LEFT_LINE == HIGH || RIGHT_LINE == HIGH);
-
+  int currentLineStatus = getLineStatusFromValues(LEFT_LINE, RIGHT_LINE);
+  checkUnchangedLineStatus(currentLineStatus);
   delay(5);
 }
