@@ -136,13 +136,15 @@ void checkLoopBreaker(bool lineDetected) {
   if (lineDetected) {
     currentDetectionTime = millis();
     unsigned long delta = currentDetectionTime - lastDetectionTime;
-    if (delta <= 1000) {
+    if (delta <= 1200) {
       detectionCounter++;
     } else {
       detectionCounter = 1;
     }
     lastDetectionTime = currentDetectionTime;
     if (detectionCounter >= 4) {
+      driveBackward(255);
+      delay(250);
       if (random(0, 2)) {
         rotateLeft();
       } else {
